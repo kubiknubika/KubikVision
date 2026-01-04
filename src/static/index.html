@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KubikVision Analytics</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg: #0f172a; --card-bg: #1e293b; --accent: #3b82f6; --text: #e2e8f0; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        
+        .dashboard { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; max-width: 1200px; width: 100%; margin-top: 20px; }
+        @media(max-width: 800px) { .dashboard { grid-template-columns: 1fr; } }
+
+        .card { background: var(--card-bg); border-radius: 16px; padding: 20px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); border: 1px solid #334155; }
+        h1 { color: var(--accent); margin-bottom: 5px; }
+        h3 { margin-top: 0; color: #94a3b8; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* Загрузка */
+        .controls { width: 100%; max-width: 1200px; display: flex; gap: 10px; align-items: center; background: var(--card-bg); padding: 15px; border-radius: 16px; border: 1px solid #334155; }
+        input[type="file"] { display: none; }
+        .btn { background: var(--accent); color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-outline { background: transparent; border: 2px solid #475569; }
+        .btn-outline:hover { border-color: var(--text); }
+
+        /* Изображение */
+        .preview-area { min-height: 400px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+        img { max-width: 100%; border-radius: 8px; display: none; }
+        
+        /* Статистика */
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        .stat-box { background: #0f172a; padding: 15px; border-radius: 8px; text-align: center; }
+        .stat-val { font-size: 1.5rem; font-weight: 800; color: var(--accent); }
+        .stat-label { font-size: 0.8rem; color: #64748b; }
+
+        /* Список объектов */
+        .obj-list { max-height: 400px; overflow-y: auto; }
+        .obj-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #334155; }
+        .obj-name { font-weight: 600; text-transform: capitalize; }
+        .confidence-bar { width: 80px; height: 6px; background: #334155; border-radius: 3px; overflow: hidden; margin-left: 10px; }
+        .confidence-fill { height: 100%; background: #22c55e; }
+        .conf-text { font-size: 0.8rem; color: #94a3b8; width: 40px; text-align: right; }
+
+        /* Лоадер */
+        .loader { width: 48px; height: 48px; border: 5px solid #FFF; border-bottom-color: var(--accent); border-radius: 50%; display: none; box-sizing: border-box; animation: rotation 1s linear infinite; }
+        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div style="text-align: center; margin-bottom: 20px;">
+        <h1>KubikVision AI</h1>
+        <div style="color: #64748b;">
+    Powered by <span id="modelVersion" style="color: #3b82f6; font-weight: bold;">Loading...</span>
+</div>
+    </div>
+
+    <div class="controls">
+        <label class="btn btn-outline">
+            📂 Select Image
+            <input type="file" id="fileInput" accept="image/*">
+        </label>
+        <span id="fileName" style="margin-right: auto; margin-left: 10px; color: #94a3b8;">No file selected</span>
+        <button class="btn" onclick="startProcessing()" id="processBtn" disabled>⚡ Analyze</button>
+    </div>
+
+    <div class="dashboard">
+        <!-- Левая колонка: Картинка -->
+        <div class="card preview-area">
+            <span id="placeholder" style="color: #475569;">Image will appear here</span>
+            <div class="loader" id="loader"></div>
+            <img id="resultImage" src="">
+        </div>
+
+        <!-- Правая колонка: Аналитика -->
+        <div class="card">
+            <h3>AI Analytics</h3>
+            
+            <div class="stat-grid">
+                <div class="stat-box">
+                    <div class="stat-val" id="statCount">0</div>
+                    <div class="stat-label">Objects Found</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-val" id="statTime">0s</div>
+                    <div class="stat-label">Inference Time</div>
+                </div>
+            </div>
+
+            <h3>Detected Objects</h3>
+            <div class="obj-list" id="objList">
+                <div style="text-align: center; padding: 20px; color: #475569;">No data yet</div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    const fileInput = document.getElementById('fileInput');
+    const fileName = document.getElementById('fileName');
+    const processBtn = document.getElementById('processBtn');
+    const resultImg = document.getElementById('resultImage');
+    const placeholder = document.getElementById('placeholder');
+    const loader = document.getElementById('loader');
+
+    // Элементы статистики
+    const statCount = document.getElementById('statCount');
+    const statTime = document.getElementById('statTime');
+    const objList = document.getElementById('objList');
+
+    fileInput.addEventListener('change', function() {
+        if(this.files.length > 0) {
+            fileName.textContent = this.files[0].name;
+            processBtn.disabled = false;
+            // Сброс UI
+            resultImg.style.display = 'none';
+            placeholder.style.display = 'block';
+            statCount.innerText = "0";
+            statTime.innerText = "0s";
+            objList.innerHTML = '<div style="text-align: center; padding: 20px; color: #475569;">Ready to analyze</div>';
+        }
+    });
+
+    async function startProcessing() {
+        processBtn.disabled = true;
+        placeholder.style.display = 'none';
+        loader.style.display = 'block';
+        resultImg.style.display = 'none';
+
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+
+        try {
+            // 1. Upload
+            const upResp = await fetch('/upload', { method: 'POST', body: formData });
+            if(!upResp.ok) throw new Error("Upload failed");
+            const { task_id } = await upResp.json();
+
+            // 2. Poll
+            const interval = setInterval(async () => {
+                const resResp = await fetch(`/results/${task_id}`);
+                const data = await resResp.json();
+
+                if (data.status === 'completed') {
+                    clearInterval(interval);
+                    renderResults(data);
+                } else if (data.status === 'failed') {
+                    clearInterval(interval);
+                    alert("Processing Failed");
+                    resetUI();
+                }
+            }, 1000);
+
+        } catch (e) {
+            console.error(e);
+            alert("Error: " + e.message);
+            resetUI();
+        }
+    }
+
+    function renderResults(data) {
+        loader.style.display = 'none';
+        
+        const analytics = data.analytics;
+
+        // 1. Показываем картинку
+        resultImg.src = data.processed_url;
+        resultImg.style.display = 'block';
+
+        // 2. Показываем версию модели (если есть)
+        if (analytics.model_version) {
+            document.getElementById('modelVersion').innerText = analytics.model_version;
+        }
+
+        // 3. Считаем количество объектов (JS считает сам, так надежнее)
+        const count = analytics.objects ? analytics.objects.length : 0;
+        statCount.innerText = count;
+
+        // 4. Время (с защитой от null)
+        statTime.innerText = (analytics.time_taken || 0) + "s";
+
+        // 5. Рендерим список
+        objList.innerHTML = '';
+        if (count === 0) {
+            objList.innerHTML = '<div style="padding:10px;">No objects detected</div>';
+        } else {
+            analytics.objects.forEach(obj => {
+                const percent = Math.round(obj.confidence * 100);
+                
+                // Выбираем цвет полоски в зависимости от уверенности
+                let color = '#ef4444'; // красный
+                if(percent > 50) color = '#eab308'; // желтый
+                if(percent > 80) color = '#22c55e'; // зеленый
+
+                const item = document.createElement('div');
+                item.className = 'obj-item';
+                item.innerHTML = `
+                    <span class="obj-name">${obj.label}</span>
+                    <div style="display:flex; align-items:center;">
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" style="width: ${percent}%; background-color: ${color};"></div>
+                        </div>
+                        <span class="conf-text">${percent}%</span>
+                    </div>
+                `;
+                objList.appendChild(item);
+            });
+        }
+        processBtn.disabled = false;
+    }
+
+    function resetUI() {
+        loader.style.display = 'none';
+        placeholder.style.display = 'block';
+        processBtn.disabled = false;
+    }
+</script>
+
+</body>
+</html>

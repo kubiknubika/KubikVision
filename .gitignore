@@ -1,0 +1,18 @@
+__pycache__/
+*.py[cod]
+.env
+.venv/
+env/
+.vscode/
+.idea/
+
+# Docker volumes
+minio_data/
+redis_data/
+
+# AI Models (скачиваются автоматически)
+*.pt
+*.onnx
+
+# System files
+.DS_Store
