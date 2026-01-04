@@ -1,53 +1,86 @@
-👁️ KubikVision: Distributed AI Computer Vision System
-Enterprise-grade distributed system for real-time object detection. Built with Python, FastAPI, Celery, Redis, and YOLO12.
+<div align="center">
 
-PythonFastAPICeleryRedisDocker
+# 👁️ KubikVision AI
 
-🚀 Overview
-KubikVision is a microservice-based architecture designed to decouple high-load AI processing from the web presentation layer. It implements the Producer-Consumer pattern to ensure scalability and responsiveness.
+**Distributed Enterprise-Grade Computer Vision System**
 
-The system allows users to upload images, which are asynchronously processed by AI workers to detect objects, calculate confidence levels, and generate analytics.
+![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-Async-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+![Celery](https://img.shields.io/badge/Celery-Distributed-37814A?style=for-the-badge&logo=celery&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-Broker-DC382D?style=for-the-badge&logo=redis&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 
-🛠️ Key Features (Senior Level)
-⚡ Distributed Task Processing: Web API (FastAPI) never blocks. Heavy AI tasks are offloaded to Celery workers via Redis.
-🤖 Auto-Healing AI Engine: The system features a Model Discovery Mechanism. On startup, it automatically checks for the latest available SOTA model (YOLO12/11/...) and falls back to stable versions if bleeding-edge models are unavailable.
-🛡️ Secure S3 Proxy: Direct access to the Object Storage (MinIO) is restricted. Files are streamed through a secure API endpoint.
-📊 Real-time Dashboard: A responsive JS frontend that polls task status and visualizes AI analytics (Confidence scores, inference time).
-🐳 Container Orchestration: Full infrastructure (Web, Worker, Redis, MinIO) deployed via Docker Compose.
-🏗️ Architecture
-mermaid
+</div>
 
-graph LR
-    User[User / Frontend] -- Upload --> API[FastAPI Web]
-    API -- Save File --> S3[(MinIO Storage)]
-    API -- Push Task --> Redis[(Redis Broker)]
-    Redis -- Pop Task --> Worker[Celery Worker]
-    Worker -- Load Image --> S3
-    Worker -- Process (YOLO) --> AI[AI Engine]
-    AI -- Metadata & Result --> Worker
-    Worker -- Save Result --> S3
-    Worker -- Update Status --> Redis
-⚙️ Tech Stack
-Backend: Python 3.11, FastAPI, Pydantic v2
-Asynchronous Tasks: Celery 5.3
-Message Broker: Redis 7
-Storage: MinIO (S3 Compatible)
-Computer Vision: Ultralytics YOLO12 (Attention-based architecture)
-Frontend: HTML5, CSS3 (Glassmorphism), Vanilla JS
-🚀 How to Run
-Clone the repository:
+---
 
-Bash
+## 🚀 Overview
 
-git clone https://github.com/your-username/KubikVision.git
-cd KubikVision
-Start Infrastructure:
+![Dashboard Screenshot](screenshot.png)
 
-Bash
+**KubikVision** is a robust, distributed system designed to process high-load computer vision tasks. Unlike simple scripts, it uses a microservices architecture to decouple the **Web API** (FastAPI) from the **Heavy Computation** (AI Workers).
 
-docker-compose up --build
-Access:
+> **Core Logic:** The user uploads an image -> The API pushes a task to Redis -> A background Celery worker picks it up, runs YOLO12 inference, and saves the result to MinIO -> The Frontend updates in real-time.
 
-Web Dashboard: http://localhost:8000
-Swagger API: http://localhost:8000/docs
-MinIO Console: http://localhost:9001
+---
+
+## ⚡ Key Features (Senior Implementation)
+
+### 🧠 Auto-Healing AI Engine
+The system does not rely on hardcoded model versions. It implements a **Smart Discovery Protocol**:
+*   Checks for the latest SOTA model (`yolo26n`, `yolo13n`...).
+*   Automatically falls back to stable versions (`yolo12n`, `yolo11n`) if bleeding-edge models are unavailable.
+*   Prevents system crashes due to missing model files.
+
+### 🛡️ Secure S3 Proxy
+Direct access to the storage bucket is restricted for security.
+*   **Bad Practice:** Giving public S3 URLs to users.
+*   **KubikVision Way:** Implemented a streaming proxy endpoint (`/files/{path}`). The API validates the request and streams bytes securely.
+
+### 📊 Real-Time Analytics Dashboard
+A responsive UI built with **Glassmorphism design**:
+*   Visualizes Object Detection confidence levels.
+*   Calculates Inference Time.
+*   Polling mechanism for real-time status updates without WebSockets.
+
+---
+
+## 📂 Project Structure
+
+    kubik_vision/
+    ├── docker-compose.yml       # Infrastructure Orchestration
+    ├── src/
+    │   ├── api/                 # FastAPI Endpoints
+    │   ├── core/                # Config & Settings
+    │   ├── services/            # Business Logic (S3, Vision)
+    │   ├── worker/              # Celery Tasks (AI Processing)
+    │   ├── static/              # Frontend (HTML/JS/CSS)
+    │   └── main.py              # Entry Point
+    └── requirements.txt         # Dependencies
+
+---
+
+## 🚀 How to Run
+
+### 1. Clone the repository
+    git clone https://github.com/your-username/KubikVision.git
+    cd KubikVision
+
+### 2. Start the Stack (Docker)
+    docker-compose up --build
+
+*Wait for the `kubik_worker` to download the AI model (approx. 10-20 seconds).*
+
+### 3. Access the System
+*   **Web Dashboard:** http://localhost:8000
+*   **Swagger Documentation:** http://localhost:8000/docs
+*   **MinIO Console:** http://localhost:9001
+
+---
+
+<div align="center">
+
+**Developed by KubikNubika**
+*Part of the "Zero to Hero" Challenge*
+
+</div>
